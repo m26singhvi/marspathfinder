@@ -14,22 +14,17 @@ void* thread_one_function()
 {
   printf("Thread 1 started \n");
   struct sched_param param;
-   
-  int policy;
-  pthread_getschedparam(pthread_self(), &policy, &param);
-  printf("%d \n", policy);
-  policy = SCHED_FIFO;
-  printf("%d \n", policy);
-  param.sched_priority = 9;
-  int ret = pthread_setschedparam(pthread_self(), policy, &param);
-
-  if (ret == -1)
-  printf("Error");
-
-  unsigned int i = 0;
-  
   pthread_t id = pthread_self();
+  setAffinity(id);
+  
+  unsigned int i = 0;
+  int policy;
+  int ret;
 
+  sched_getparam(0, &param);
+  printf("Priority for thread 1 = %d \n", param.sched_priority);
+  
+  sleep(10);
   for (i=0; i < (0xFFFFFFFF); i++)
   ;
 
@@ -44,19 +39,15 @@ void* thread_one_function()
 void* thread_two_function()
 {
   printf("Thread 2 started \n");
-  struct sched_param param;
-  int policy;
-  pthread_getschedparam(pthread_self(), &policy, &param);
-  printf("%d \n", policy);
-  param.sched_priority = 9;
-  int ret = pthread_setschedparam(pthread_self(), policy, &param);
   pthread_t id = pthread_self();
+  setAffinity(id);
+  sleep(10);
   
    unsigned int i = 0;
   
   for (i=0; i < (0xFFFFFFFF); i++)
   ;
-  if (pthread_equal(id, tid[0]))
+  if (pthread_equal(id, tid[1]))
   {
     printf("Second Thread processing\n ");
   }
@@ -67,20 +58,17 @@ void* thread_two_function()
 void* thread_three_function()
 {
   printf("Thread 3 started \n");
-  struct sched_param param;
-  int policy;
-  pthread_getschedparam(pthread_self(), &policy, &param);
-  printf("%d \n", policy);
-  param.sched_priority = 9;
-  int ret = pthread_setschedparam(pthread_self(), policy, &param);
-   unsigned int i = 0;
   pthread_t id = pthread_self();
+  setAffinity(id);
+  sleep(10);
+  int i = 0;
+  
   for (i=0; i < (0xFFFFFFFF); i++)
   ;
 
-  if (pthread_equal(id, tid[0]))
+  if (pthread_equal(id, tid[2]))
   {
-    printf("Second Thread processing\n ");
+    printf("Third Thread processing\n ");
   }
   return NULL;
 }
@@ -94,30 +82,60 @@ int create_thread(int num, void *func, pthread_attr_t *attr)
   err = pthread_create(&(tid[num-1]), attr, func, NULL);
 
   if (err != 0)
-     printf("Error in creating the thread : %s \n", strerror(err));
+     return err;
   else
      printf("Thread created successfully : %s \n", strerror(err));
   
   return 0;
 }
 
-int create_threads()
+int setAffinity(pthread_t id)
 {
-  int err = 0;
-  pthread_attr_t attr;
-  int ret;
-
-  ret = pthread_attr_init(&attr);
   cpu_set_t mask;
   CPU_ZERO(&mask);
   
   CPU_SET(0, &mask);
-  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
-   
-  ret = create_thread(1, &thread_one_function, &attr);
-  ret = create_thread(2, &thread_two_function, &attr);
-  ret = create_thread(3, &thread_three_function, &attr);
+  pthread_setaffinity_np(id, sizeof(cpu_set_t), &mask);
+
+}
+
+int create_threads()
+{
+  printf("Creating threads now \n");
   
+  int err = 0;
+  pthread_attr_t attr;
+  int ret;
+  int i;
+
+  ret = pthread_attr_init(&attr);
+   
+  struct sched_param param;
+  pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+  param.sched_priority = 40;
+  pthread_attr_setschedparam(&attr, &param);
+
+  ret = create_thread(1, &thread_one_function, &attr);
+  if (ret == -1)
+    printf(" Creating Thread : %s Error\n", __func__);
+  param.sched_priority = 30;
+  ret = pthread_attr_setschedparam(&attr, &param);
+  if (ret == -1)
+    printf("Setting Param : %s Error\n", __func__);
+  ret = create_thread(2, &thread_two_function, &attr);
+  if (ret == -1)
+    printf("Creating thread :  %s Error\n", __func__);
+  param.sched_priority = 20;
+  ret = pthread_attr_setschedparam(&attr, &param);
+  if (ret == -1)
+    printf("Setting Param  %s Error\n", __func__);
+  ret = create_thread(3, &thread_three_function, &attr);
+  if (ret == -1)
+    printf("Creating Thread :  %s Error\n", __func__);
+  
+  for(i = 0; i < 3; i++)
+   pthread_join(tid[i], NULL);
+
   return 0;
 
 }
@@ -130,22 +148,15 @@ int main ()
   int i;
   struct sched_param param;
   int policy;
-  pthread_getschedparam(pthread_self(), &policy, &param);
-  printf("%d \n", policy);
+  param.sched_priority = 90;
   policy = SCHED_FIFO;
-  printf("%d \n", policy);
-  param.sched_priority = 99;
-  ret = pthread_setschedparam(pthread_self(), policy, &param);
+  ret = pthread_setschedparam(0, policy, &param);
+  pthread_getschedparam(0, &policy, &param);
+  printf("Set Priority : Main %d \n", param.sched_priority);
+  create_threads();
   
-
-  printf("Hello This is main, I am going to create threads now \n");
- create_threads();
-  //create_thread(1, &thread_one_function);
-  //create_thread(2, &thread_two_function);
-  //create_thread(3, &thread_three_function);
-
-  for(i = 0; i < 3; i++)
-   pthread_join(tid[1], NULL);
+  while(1)
+  printf("I am in main \n");
 
   return 0;
 }
