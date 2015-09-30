@@ -85,24 +85,13 @@ void* thread_three_function()
   return NULL;
 }
 
-int create_thread(int num, void *func)
+int create_thread(int num, void *func, pthread_attr_t *attr)
 {
   int err = 0;
-  pthread_attr_t attr;
-  int ret;
-  pthread_attr_t *att;
+  if (func == NULL)
+   printf("Thread starting function is null\n");
 
-  ret = pthread_attr_init(&attr);
-  cpu_set_t mask;
-  CPU_ZERO(&mask);
-  
-  CPU_SET(0, &mask);
-  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
-   
-   if (func == NULL)
-    printf("Thread starting function is null\n");
-
-  err = pthread_create(&(tid[num-1]), &attr, func, NULL);
+  err = pthread_create(&(tid[num-1]), attr, func, NULL);
 
   if (err != 0)
      printf("Error in creating the thread : %s \n", strerror(err));
@@ -111,6 +100,28 @@ int create_thread(int num, void *func)
   
   return 0;
 }
+
+int create_threads()
+{
+  int err = 0;
+  pthread_attr_t attr;
+  int ret;
+
+  ret = pthread_attr_init(&attr);
+  cpu_set_t mask;
+  CPU_ZERO(&mask);
+  
+  CPU_SET(0, &mask);
+  pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &mask);
+   
+  ret = create_thread(1, &thread_one_function, &attr);
+  ret = create_thread(2, &thread_two_function, &attr);
+  ret = create_thread(3, &thread_three_function, &attr);
+  
+  return 0;
+
+}
+
 
   
 int main ()
@@ -128,9 +139,10 @@ int main ()
   
 
   printf("Hello This is main, I am going to create threads now \n");
-  create_thread(1, &thread_one_function);
-  create_thread(2, &thread_two_function);
-  create_thread(3, &thread_three_function);
+ create_threads();
+  //create_thread(1, &thread_one_function);
+  //create_thread(2, &thread_two_function);
+  //create_thread(3, &thread_three_function);
 
   for(i = 0; i < 3; i++)
    pthread_join(tid[1], NULL);

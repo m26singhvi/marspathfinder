@@ -9,7 +9,8 @@
 void * thread_one_function();
 void * thread_two_function();
 void * thread_three_function();
-int create_thread(int num, void *func);
+int create_thread(int num, void *func, pthread_attr_t *attr);
+int create_threads();
 int init_main();
 
 pthread_t tid[3];
